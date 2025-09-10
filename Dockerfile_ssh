@@ -1,0 +1,44 @@
+FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y locales && \
+    locale-gen ko_KR.UTF-8 && \
+    update-locale LANG=ko_KR.UTF-8
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 \
+    LANG=ko_KR.UTF-8 \
+    LANGUAGE=ko_KR.UTF-8 \
+    LC_ALL=ko_KR.UTF-8
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# 필수 패키지 + openssh-server 추가
+RUN apt-get install -y \
+    wget \
+    git \
+    python3 \
+    python3-pip \
+    openjdk-8-jdk \
+    fonts-nanum* \
+    openssh-server \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir /var/run/sshd
+
+# SSH 비밀번호 로그인 및 root 로그인 허용 설정
+RUN echo 'root:1234' | chpasswd
+RUN sed -ri 's/^#?PasswordAuthentication\s+.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -ri 's/^#?PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# 파이썬 패키지
+RUN pip3 install flask requests JPype1==1.4.1
+
+WORKDIR /app
+COPY . /app/python-hwplib
+WORKDIR /app/python-hwplib
+
+# 포트 노출
+EXPOSE 7860
+EXPOSE 22
+
+# sshd 실행
+CMD ["/usr/sbin/sshd", "-D"]
